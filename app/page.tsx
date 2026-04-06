@@ -1057,7 +1057,7 @@ function GreetingBar() {
                             className={cn('size-7 rounded-full overflow-hidden cursor-pointer transition-all duration-150 hover:scale-110 active:scale-95',
                               avatar === url ? 'ring-2 ring-offset-0' : 'hover:ring-1 hover:ring-[var(--ev-border-medium)]'
                             )}
-                            style={avatar === url ? { ringColor: 'var(--ev-primary)' } : {}}
+                            style={avatar === url ? { boxShadow: '0 0 0 2px var(--ev-primary)' } : {}}
                           >
                             <img src={url} alt="" className="size-full" />
                           </button>
