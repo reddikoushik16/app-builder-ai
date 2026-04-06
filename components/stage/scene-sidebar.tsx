@@ -126,7 +126,7 @@ export function SceneSidebar({
             className="flex items-center gap-2 cursor-pointer rounded-lg px-1.5 -mx-1.5 py-1 -my-1 hover:bg-gray-100/80 dark:hover:bg-gray-800/60 active:scale-[0.97] transition-all duration-150"
             title={t('generation.backToHome')}
           >
-            <img src="/logo-horizontal.png" alt="OpenMAIC" className="h-6" />
+            <span style={{ background: 'linear-gradient(135deg, #00D4FF, #7B2FFF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: '16px' }}>EduVerse</span>
           </button>
           <button
             onClick={() => onCollapseChange(true)}
