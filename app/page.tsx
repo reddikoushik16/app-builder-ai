@@ -13,11 +13,20 @@ import {
   Pencil,
   Trash2,
   Settings,
-  Sun,
-  Moon,
-  Monitor,
   BotOff,
   ChevronUp,
+  Sparkles,
+  Users,
+  Volume2,
+  Image,
+  Brain,
+  Zap,
+  MessageSquare,
+  Cpu,
+  GraduationCap,
+  ArrowRight,
+  Play,
+  ChevronRight,
 } from 'lucide-react';
 import { useI18n } from '@/lib/hooks/use-i18n';
 import { LanguageSwitcher } from '@/components/language-switcher';
@@ -28,7 +37,6 @@ import { cn } from '@/lib/utils';
 import { SettingsDialog } from '@/components/settings';
 import { GenerationToolbar } from '@/components/generation/generation-toolbar';
 import { AgentBar } from '@/components/agent/agent-bar';
-import { useTheme } from '@/lib/hooks/use-theme';
 import { nanoid } from 'nanoid';
 import { storePdfBlob } from '@/lib/utils/image-storage';
 import type { UserRequirements } from '@/lib/types/generation';
@@ -48,6 +56,7 @@ import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useDraftCache } from '@/lib/hooks/use-draft-cache';
 import { SpeechButton } from '@/components/audio/speech-button';
+import { EduVerseLogo } from '@/components/eduverse-logo';
 
 const log = createLogger('Home');
 
@@ -69,9 +78,80 @@ const initialFormState: FormState = {
   webSearch: false,
 };
 
+// Star field canvas component
+function StarField() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const stars = Array.from({ length: 150 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      size: Math.random() * 1.5 + 0.3,
+      speed: Math.random() * 0.0008 + 0.0002,
+      phase: Math.random() * Math.PI * 2,
+      brightness: Math.random() * 0.6 + 0.2,
+    }));
+
+    let frame: number;
+    const draw = (t: number) => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const s of stars) {
+        const opacity = s.brightness * (0.5 + 0.5 * Math.sin(t * s.speed + s.phase));
+        ctx.fillStyle = `rgba(255,255,255,${opacity})`;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      frame = requestAnimationFrame(draw);
+    };
+    frame = requestAnimationFrame(draw);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 pointer-events-none z-0"
+      style={{ opacity: 0.8 }}
+    />
+  );
+}
+
+// Feature card data
+const FEATURES = [
+  { icon: Sparkles, color: '#00D4FF', title: 'AI Lesson Generation', desc: 'Type any topic and watch a complete 15-slide lesson appear in minutes. Powered by the best AI models.' },
+  { icon: Users, color: '#7B2FFF', title: '4 AI Agents', desc: 'Dr. Nova teaches, Aria assists, Alex and Priya ask the questions real students ask. Feels real.' },
+  { icon: Volume2, color: '#FF6B35', title: 'Premium Voice Acting', desc: 'Each agent has a unique voice. Dr. Nova sounds like a real professor. Powered by ElevenLabs AI.' },
+  { icon: Image, color: '#00D4FF', title: 'Visual Learning', desc: 'Every slide gets a unique AI-generated image that makes complex concepts instantly understandable.' },
+  { icon: Brain, color: '#7B2FFF', title: 'Adaptive Discussion', desc: 'Agents discuss, debate and build on each other\'s points creating a genuinely dynamic classroom.' },
+  { icon: Zap, color: '#FF6B35', title: 'Instant Quiz', desc: 'Test your understanding with AI-generated quizzes that grade and explain answers in real time.' },
+];
+
+const EXAMPLE_CHIPS = [
+  '✦ Teach me Python from scratch',
+  '✦ Explain Quantum Computing',
+  '✦ How does the brain work',
+  '✦ Introduction to Machine Learning',
+];
+
 function HomePage() {
   const { t } = useI18n();
-  const { theme, setTheme } = useTheme();
   const router = useRouter();
   const [form, setForm] = useState<FormState>(initialFormState);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -79,23 +159,17 @@ function HomePage() {
     import('@/lib/types/settings').SettingsSection | undefined
   >(undefined);
 
-  // Draft cache for requirement text
   const { cachedValue: cachedRequirement, updateCache: updateRequirementCache } =
     useDraftCache<string>({ key: 'requirementDraft' });
 
-  // Model setup state
   const currentModelId = useSettingsStore((s) => s.modelId);
   const [recentOpen, setRecentOpen] = useState(true);
 
-  // Hydrate client-only state after mount (avoids SSR mismatch)
-  /* eslint-disable react-hooks/set-state-in-effect -- Hydration from localStorage must happen in effect */
   useEffect(() => {
     try {
       const saved = localStorage.getItem(RECENT_OPEN_STORAGE_KEY);
       if (saved !== null) setRecentOpen(saved !== 'false');
-    } catch {
-      /* localStorage unavailable */
-    }
+    } catch { /* */ }
     try {
       const savedWebSearch = localStorage.getItem(WEB_SEARCH_STORAGE_KEY);
       const savedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY);
@@ -110,13 +184,9 @@ function HomePage() {
       if (Object.keys(updates).length > 0) {
         setForm((prev) => ({ ...prev, ...updates }));
       }
-    } catch {
-      /* localStorage unavailable */
-    }
+    } catch { /* */ }
   }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Restore requirement draft from cache (derived state pattern — no effect needed)
   const [prevCachedRequirement, setPrevCachedRequirement] = useState(cachedRequirement);
   if (cachedRequirement !== prevCachedRequirement) {
     setPrevCachedRequirement(cachedRequirement);
@@ -125,31 +195,16 @@ function HomePage() {
     }
   }
 
-  const [themeOpen, setThemeOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [classrooms, setClassrooms] = useState<StageListItem[]>([]);
   const [thumbnails, setThumbnails] = useState<Record<string, Slide>>({});
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const toolbarRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    if (!themeOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
-        setThemeOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [themeOpen]);
 
   const loadClassrooms = async () => {
     try {
       const list = await listStages();
       setClassrooms(list);
-      // Load first slide thumbnails
       if (list.length > 0) {
         const slides = await getFirstSlideByStages(list.map((c) => c.id));
         setThumbnails(slides);
@@ -160,13 +215,8 @@ function HomePage() {
   };
 
   useEffect(() => {
-    // Clear stale media store to prevent cross-course thumbnail contamination.
-    // The store may hold tasks from a previously visited classroom whose elementIds
-    // (gen_img_1, etc.) collide with other courses' placeholders.
     useMediaGenerationStore.getState().revokeObjectUrls();
     useMediaGenerationStore.setState({ tasks: {} });
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Store hydration on mount
     loadClassrooms();
   }, []);
 
@@ -202,34 +252,33 @@ function HomePage() {
       if (field === 'webSearch') localStorage.setItem(WEB_SEARCH_STORAGE_KEY, String(value));
       if (field === 'language') localStorage.setItem(LANGUAGE_STORAGE_KEY, String(value));
       if (field === 'requirement') updateRequirementCache(value as string);
-    } catch {
-      /* ignore */
-    }
+    } catch { /* */ }
   };
 
   const showSetupToast = (icon: React.ReactNode, title: string, desc: string) => {
     toast.custom(
       (id) => (
         <div
-          className="w-[356px] rounded-xl border border-amber-200/60 dark:border-amber-800/40 bg-gradient-to-r from-amber-50 via-white to-amber-50 dark:from-amber-950/60 dark:via-slate-900 dark:to-amber-950/60 shadow-lg shadow-amber-500/8 dark:shadow-amber-900/20 p-4 flex items-start gap-3 cursor-pointer"
+          className="w-[356px] rounded-xl border bg-[var(--ev-bg-card)] shadow-lg p-4 flex items-start gap-3 cursor-pointer"
+          style={{ borderColor: 'var(--ev-border-medium)' }}
           onClick={() => {
             toast.dismiss(id);
             setSettingsOpen(true);
           }}
         >
-          <div className="shrink-0 mt-0.5 size-9 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center ring-1 ring-amber-200/50 dark:ring-amber-800/30">
+          <div className="shrink-0 mt-0.5 size-9 rounded-lg bg-[var(--ev-bg-elevated)] flex items-center justify-center">
             {icon}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-amber-900 dark:text-amber-200 leading-tight">
+            <p className="text-sm font-semibold" style={{ color: 'var(--ev-text-primary)' }}>
               {title}
             </p>
-            <p className="text-xs text-amber-700/80 dark:text-amber-400/70 mt-0.5 leading-relaxed">
+            <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--ev-text-secondary)' }}>
               {desc}
             </p>
           </div>
-          <div className="shrink-0 mt-1 text-[10px] font-medium text-amber-500 dark:text-amber-500/70 tracking-wide">
-            <Settings className="size-3.5 animate-[spin_3s_linear_infinite]" />
+          <div className="shrink-0 mt-1">
+            <Settings className="size-3.5 animate-[spin_3s_linear_infinite]" style={{ color: 'var(--ev-primary)' }} />
           </div>
         </div>
       ),
@@ -238,10 +287,9 @@ function HomePage() {
   };
 
   const handleGenerate = async () => {
-    // Validate setup before proceeding
     if (!currentModelId) {
       showSetupToast(
-        <BotOff className="size-4.5 text-amber-600 dark:text-amber-400" />,
+        <BotOff className="size-4.5" style={{ color: 'var(--ev-warning)' }} />,
         t('settings.modelNotConfigured'),
         t('settings.setupNeeded'),
       );
@@ -274,15 +322,11 @@ function HomePage() {
       if (form.pdfFile) {
         pdfStorageKey = await storePdfBlob(form.pdfFile);
         pdfFileName = form.pdfFile.name;
-
         const settings = useSettingsStore.getState();
         pdfProviderId = settings.pdfProviderId;
         const providerCfg = settings.pdfProvidersConfig?.[settings.pdfProviderId];
         if (providerCfg) {
-          pdfProviderConfig = {
-            apiKey: providerCfg.apiKey,
-            baseUrl: providerCfg.baseUrl,
-          };
+          pdfProviderConfig = { apiKey: providerCfg.apiKey, baseUrl: providerCfg.baseUrl };
         }
       }
 
@@ -300,7 +344,6 @@ function HomePage() {
         currentStep: 'generating' as const,
       };
       sessionStorage.setItem('generationSession', JSON.stringify(sessionState));
-
       router.push('/generation-preview');
     } catch (err) {
       log.error('Error preparing generation:', err);
@@ -313,7 +356,6 @@ function HomePage() {
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
     if (diffDays === 0) return t('classroom.today');
     if (diffDays === 1) return t('classroom.yesterday');
     if (diffDays < 7) return `${diffDays} ${t('classroom.daysAgo')}`;
@@ -330,89 +372,67 @@ function HomePage() {
   };
 
   return (
-    <div className="min-h-[100dvh] w-full bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex flex-col items-center p-4 pt-16 md:p-8 md:pt-16 overflow-x-hidden">
-      {/* ═══ Top-right pill (unchanged) ═══ */}
-      <div
-        ref={toolbarRef}
-        className="fixed top-4 right-4 z-50 flex items-center gap-1 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md px-2 py-1.5 rounded-full border border-gray-100/50 dark:border-gray-700/50 shadow-sm"
+    <div className="min-h-[100dvh] w-full flex flex-col" style={{ background: 'var(--ev-bg-base)' }}>
+      <StarField />
+
+      {/* Aurora background gradients */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-[1]">
+        <div
+          className="absolute -top-32 -left-32 w-[600px] h-[600px] rounded-full blur-[120px]"
+          style={{ background: 'rgba(0,212,255,0.07)', animation: 'ev-aurora-drift 20s ease-in-out infinite' }}
+        />
+        <div
+          className="absolute -top-20 -right-20 w-[500px] h-[500px] rounded-full blur-[100px]"
+          style={{ background: 'rgba(123,47,255,0.06)', animation: 'ev-aurora-drift 25s ease-in-out infinite reverse' }}
+        />
+        <div
+          className="absolute -bottom-32 left-1/2 -translate-x-1/2 w-[400px] h-[400px] rounded-full blur-[80px]"
+          style={{ background: 'rgba(255,107,53,0.04)', animation: 'ev-aurora-drift 30s ease-in-out infinite' }}
+        />
+      </div>
+
+      {/* ═══ Navbar ═══ */}
+      <nav className="sticky top-0 z-50 h-[60px] flex items-center justify-between px-6 transition-all"
+        style={{ background: 'transparent', backdropFilter: 'blur(20px)' }}
       >
-        {/* Language Selector */}
-        <LanguageSwitcher onOpen={() => setThemeOpen(false)} />
+        <EduVerseLogo size={28} />
 
-        <div className="w-[1px] h-4 bg-gray-200 dark:bg-gray-700" />
-
-        {/* Theme Selector */}
-        <div className="relative">
-          <button
-            onClick={() => {
-              setThemeOpen(!themeOpen);
-            }}
-            className="p-2 rounded-full text-gray-400 dark:text-gray-500 hover:bg-white dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200 hover:shadow-sm transition-all"
-          >
-            {theme === 'light' && <Sun className="w-4 h-4" />}
-            {theme === 'dark' && <Moon className="w-4 h-4" />}
-            {theme === 'system' && <Monitor className="w-4 h-4" />}
-          </button>
-          {themeOpen && (
-            <div className="absolute top-full mt-2 right-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden z-50 min-w-[140px]">
-              <button
-                onClick={() => {
-                  setTheme('light');
-                  setThemeOpen(false);
-                }}
-                className={cn(
-                  'w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2',
-                  theme === 'light' &&
-                    'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400',
-                )}
-              >
-                <Sun className="w-4 h-4" />
-                {t('settings.themeOptions.light')}
-              </button>
-              <button
-                onClick={() => {
-                  setTheme('dark');
-                  setThemeOpen(false);
-                }}
-                className={cn(
-                  'w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2',
-                  theme === 'dark' &&
-                    'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400',
-                )}
-              >
-                <Moon className="w-4 h-4" />
-                {t('settings.themeOptions.dark')}
-              </button>
-              <button
-                onClick={() => {
-                  setTheme('system');
-                  setThemeOpen(false);
-                }}
-                className={cn(
-                  'w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2',
-                  theme === 'system' &&
-                    'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400',
-                )}
-              >
-                <Monitor className="w-4 h-4" />
-                {t('settings.themeOptions.system')}
-              </button>
-            </div>
-          )}
+        <div className="hidden md:flex items-center gap-1 rounded-full px-1.5 py-1"
+          style={{ background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.1)' }}
+        >
+          {['Features', 'How it Works', 'Models', 'Community'].map((item) => (
+            <a key={item} href={`#${item.toLowerCase().replace(/\s/g, '-')}`}
+              className="px-4 py-1.5 text-sm rounded-full transition-colors hover:text-[var(--ev-primary)]"
+              style={{ color: 'var(--ev-text-secondary)' }}
+            >
+              {item}
+            </a>
+          ))}
         </div>
 
-        <div className="w-[1px] h-4 bg-gray-200 dark:bg-gray-700" />
-
-        {/* Settings Button */}
-        <div className="relative">
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher onOpen={() => {}} />
           <button
             onClick={() => setSettingsOpen(true)}
-            className="p-2 rounded-full text-gray-400 dark:text-gray-500 hover:bg-white dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-gray-200 hover:shadow-sm transition-all group"
+            className="p-2 rounded-full transition-all hover:scale-105"
+            style={{ color: 'var(--ev-text-secondary)' }}
           >
-            <Settings className="w-4 h-4 group-hover:rotate-90 transition-transform duration-500" />
+            <Settings className="size-4" />
+          </button>
+          <button
+            onClick={() => textareaRef.current?.focus()}
+            className="px-5 py-2 rounded-full text-sm font-semibold transition-all hover:scale-[1.02]"
+            style={{
+              background: 'linear-gradient(135deg, #00D4FF, #7B2FFF)',
+              color: 'var(--ev-bg-base)',
+              boxShadow: '0 4px 20px rgba(0,212,255,0.3)',
+            }}
+          >
+            Start Learning
           </button>
         </div>
-      </div>
+      </nav>
+
       <SettingsDialog
         open={settingsOpen}
         onOpenChange={(open) => {
@@ -422,65 +442,303 @@ function HomePage() {
         initialSection={settingsSection}
       />
 
-      {/* ═══ Background Decor ═══ */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div
-          className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"
-          style={{ animationDuration: '4s' }}
-        />
-        <div
-          className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse"
-          style={{ animationDuration: '6s' }}
-        />
-      </div>
-
-      {/* ═══ Hero section: title + input (centered, wider) ═══ */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: 'easeOut' }}
-        className={cn(
-          'relative z-20 w-full max-w-[800px] flex flex-col items-center',
-          classrooms.length === 0 ? 'justify-center min-h-[calc(100dvh-8rem)]' : 'mt-[10vh]',
-        )}
-      >
-        {/* ── Logo ── */}
-        <motion.img
-          src="/logo-horizontal.png"
-          alt="OpenMAIC"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{
-            delay: 0.1,
-            type: 'spring',
-            stiffness: 200,
-            damping: 20,
+      {/* ═══ Hero Section ═══ */}
+      <section className="relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-60px)] px-4 text-center">
+        {/* Badge */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-8 px-4 py-1.5 rounded-full text-xs font-medium flex items-center gap-2"
+          style={{
+            background: 'rgba(0,212,255,0.08)',
+            border: '1px solid rgba(0,212,255,0.2)',
+            color: 'var(--ev-primary)',
           }}
-          className="h-12 md:h-16 mb-2 -ml-2 md:-ml-3"
-        />
+        >
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--ev-primary)] animate-pulse" />
+          ✦ AI-Powered Learning Universe
+        </motion.div>
 
-        {/* ── Slogan ── */}
+        {/* Heading */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.6 }}
+        >
+          <h1 className="text-6xl md:text-7xl font-extrabold tracking-[-2px] leading-[1.05]" style={{ fontFamily: 'var(--font-heading)', color: 'white' }}>
+            Learn Anything.
+          </h1>
+          <h1
+            className="text-6xl md:text-7xl font-extrabold tracking-[-2px] leading-[1.05]"
+            style={{
+              fontFamily: 'var(--font-heading)',
+              background: 'linear-gradient(135deg, #00D4FF, #7B2FFF)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            Master Everything.
+          </h1>
+          <p className="text-3xl md:text-4xl font-light tracking-[-1px] mt-2" style={{ fontFamily: 'var(--font-heading)', color: 'var(--ev-text-secondary)' }}>
+            Together with AI.
+          </p>
+        </motion.div>
+
+        {/* Sub description */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.25 }}
-          className="text-sm text-muted-foreground/60 mb-8"
+          transition={{ delay: 0.4 }}
+          className="max-w-[560px] text-[17px] leading-[1.7] mt-6"
+          style={{ color: 'var(--ev-text-secondary)' }}
         >
-          {t('home.slogan')}
+          EduVerse creates a living AI classroom just for you. Real teachers. Real discussions. Real learning.
         </motion.p>
 
-        {/* ── Unified input area ── */}
+        {/* CTA Buttons */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.35 }}
-          className="w-full"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="flex items-center gap-3 mt-8"
         >
-          <div className="w-full rounded-2xl border border-border/60 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-xl shadow-black/[0.03] dark:shadow-black/20 transition-shadow focus-within:shadow-2xl focus-within:shadow-violet-500/[0.06]">
-            {/* ── Greeting + Profile + Agents ── */}
-            <div className="relative z-20 flex items-start justify-between">
+          <button
+            onClick={() => textareaRef.current?.focus()}
+            className="group px-8 py-3.5 rounded-full text-sm font-semibold transition-all hover:scale-[1.02] flex items-center gap-2"
+            style={{
+              background: 'linear-gradient(135deg, #00D4FF, #7B2FFF)',
+              color: 'var(--ev-bg-base)',
+              boxShadow: '0 4px 32px rgba(0,212,255,0.35)',
+            }}
+          >
+            Enter the Universe
+            <ArrowRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
+          </button>
+          <button
+            className="px-8 py-3.5 rounded-full text-sm font-medium transition-all hover:border-[var(--ev-primary)] hover:text-[var(--ev-primary)]"
+            style={{
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.15)',
+              color: 'white',
+            }}
+          >
+            Watch Demo
+          </button>
+        </motion.div>
+
+        {/* Hero visual card */}
+        <motion.div
+          initial={{ opacity: 0, y: 40, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ delay: 0.7, duration: 0.7 }}
+          className="relative mt-16 max-w-[800px] w-full"
+        >
+          <div
+            className="w-full aspect-video rounded-2xl overflow-hidden flex items-center justify-center relative"
+            style={{
+              background: 'var(--ev-bg-card)',
+              border: '1px solid var(--ev-border-medium)',
+              boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
+            }}
+          >
+            <div
+              className="absolute inset-0"
+              style={{
+                background: 'linear-gradient(135deg, rgba(0,212,255,0.05), rgba(123,47,255,0.05))',
+              }}
+            />
+            <p className="text-lg font-medium" style={{ color: 'var(--ev-text-muted)', fontFamily: 'var(--font-heading)' }}>
+              Your classroom is being prepared ✦
+            </p>
+          </div>
+
+          {/* Floating stat pills */}
+          <div className="absolute -top-4 -left-4 px-3 py-2 rounded-full text-xs font-medium backdrop-blur-md"
+            style={{ background: 'rgba(10,22,40,0.8)', border: '1px solid var(--ev-border-subtle)', color: 'var(--ev-text-primary)', animation: 'ev-float 4s ease-in-out infinite' }}
+          >
+            🎓 15 AI Slides Generated
+          </div>
+          <div className="absolute -top-4 -right-4 px-3 py-2 rounded-full text-xs font-medium backdrop-blur-md"
+            style={{ background: 'rgba(10,22,40,0.8)', border: '1px solid var(--ev-border-subtle)', color: 'var(--ev-text-primary)', animation: 'ev-float 4s ease-in-out infinite 1s' }}
+          >
+            🤖 4 AI Agents Teaching
+          </div>
+          <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 px-3 py-2 rounded-full text-xs font-medium backdrop-blur-md"
+            style={{ background: 'rgba(10,22,40,0.8)', border: '1px solid var(--ev-border-subtle)', color: 'var(--ev-text-primary)', animation: 'ev-float 4s ease-in-out infinite 0.5s' }}
+          >
+            ⚡ Powered by AI
+          </div>
+        </motion.div>
+
+        {/* Scroll indicator */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.4 }}
+          transition={{ delay: 2 }}
+          className="mt-12"
+          style={{ animation: 'ev-chevron-bounce 2s ease-in-out infinite' }}
+        >
+          <ChevronDown className="size-6" style={{ color: 'var(--ev-text-muted)' }} />
+        </motion.div>
+      </section>
+
+      {/* ═══ Features Section ═══ */}
+      <section id="features" className="relative z-10 py-24 px-4" style={{ background: 'var(--ev-bg-secondary)' }}>
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <span className="px-3 py-1 rounded-full text-xs font-medium mb-4 inline-block"
+              style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)', color: 'var(--ev-primary)' }}
+            >
+              ✦ Everything You Need
+            </span>
+            <h2 className="text-4xl font-bold mt-4" style={{ fontFamily: 'var(--font-heading)', color: 'white' }}>
+              One universe. Infinite knowledge.
+            </h2>
+            <p className="max-w-[480px] mx-auto mt-3" style={{ color: 'var(--ev-text-secondary)' }}>
+              Everything you need to master any topic, powered by cutting-edge AI.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {FEATURES.map((f, i) => (
+              <motion.div
+                key={f.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="p-7 rounded-2xl transition-all duration-200 hover:-translate-y-1 group cursor-default"
+                style={{
+                  background: 'var(--ev-bg-card)',
+                  border: '1px solid var(--ev-border-subtle)',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--ev-border-medium)';
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--ev-shadow-card)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--ev-border-subtle)';
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
+                }}
+              >
+                <div className="size-11 rounded-xl flex items-center justify-center mb-4"
+                  style={{ background: `${f.color}15` }}
+                >
+                  <f.icon className="size-5" style={{ color: f.color }} />
+                </div>
+                <h3 className="text-lg font-bold mb-2" style={{ fontFamily: 'var(--font-heading)', color: 'var(--ev-text-primary)' }}>
+                  {f.title}
+                </h3>
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--ev-text-secondary)' }}>
+                  {f.desc}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ How It Works ═══ */}
+      <section id="how-it-works" className="relative z-10 py-24 px-4" style={{ background: 'var(--ev-bg-base)' }}>
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <span className="px-3 py-1 rounded-full text-xs font-medium mb-4 inline-block"
+              style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)', color: 'var(--ev-primary)' }}
+            >
+              ✦ Simple as 1-2-3
+            </span>
+            <h2 className="text-4xl font-bold mt-4" style={{ fontFamily: 'var(--font-heading)', color: 'white' }}>
+              From idea to classroom in minutes.
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { num: '01', icon: MessageSquare, color: '#00D4FF', title: 'Tell Us What to Learn', desc: 'Type any topic or upload a PDF document. Our AI analyzes and plans your perfect lesson.' },
+              { num: '02', icon: Cpu, color: '#7B2FFF', title: 'Watch AI Build Your Class', desc: 'Five AI agents collaborate to create slides, visuals, quiz questions and voice scripts.' },
+              { num: '03', icon: GraduationCap, color: '#FF6B35', title: 'Learn with Your AI Class', desc: 'Enter your personal classroom. AI teachers explain, students ask questions, you master the topic.' },
+            ].map((step, i) => (
+              <motion.div
+                key={step.num}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.15 }}
+                className="relative p-8 rounded-2xl overflow-hidden"
+                style={{ background: 'var(--ev-bg-card)', border: '1px solid var(--ev-border-subtle)' }}
+              >
+                <span className="absolute -top-2 -left-2 text-[120px] font-black leading-none select-none pointer-events-none"
+                  style={{ fontFamily: 'var(--font-heading)', color: 'rgba(0,212,255,0.04)' }}
+                >
+                  {step.num}
+                </span>
+                <div className="relative z-10">
+                  <div className="size-12 rounded-full flex items-center justify-center mb-5"
+                    style={{ background: `${step.color}20` }}
+                  >
+                    <step.icon className="size-5" style={{ color: step.color }} />
+                  </div>
+                  <h3 className="text-xl font-bold mb-3" style={{ fontFamily: 'var(--font-heading)', color: 'var(--ev-text-primary)' }}>
+                    {step.title}
+                  </h3>
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--ev-text-secondary)' }}>
+                    {step.desc}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ Input Section — Main CTA ═══ */}
+      <section className="relative z-10 py-24 px-4" style={{ background: 'var(--ev-bg-base)' }}>
+        <div className="max-w-3xl mx-auto">
+          {/* Radial glow */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-[600px] h-[400px] rounded-full blur-[120px]" style={{ background: 'rgba(0,212,255,0.06)' }} />
+          </div>
+
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-10 relative z-10" style={{ fontFamily: 'var(--font-heading)', color: 'white' }}>
+            What do you want to learn today?
+          </h2>
+
+          {/* Agent preview row */}
+          <div className="flex items-center justify-center gap-3 mb-6 relative z-10">
+            <span className="text-xs font-medium" style={{ color: 'var(--ev-text-secondary)' }}>Your learning team is ready</span>
+            <div className="flex -space-x-2">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="size-8 rounded-full flex items-center justify-center text-xs"
+                  style={{
+                    background: 'var(--ev-bg-elevated)',
+                    border: '2px solid var(--ev-primary)',
+                    color: 'var(--ev-primary)',
+                    animation: `ev-pulse-glow 3s ease-in-out infinite ${i * 0.5}s`,
+                  }}
+                >
+                  {['👩‍🏫', '👨‍💻', '👧', '👦'][i]}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Input card */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="relative z-10 rounded-2xl p-7 transition-all focus-within:shadow-[0_0_120px_rgba(0,212,255,0.15)]"
+            style={{
+              background: 'var(--ev-bg-card)',
+              border: '1px solid var(--ev-border-medium)',
+              boxShadow: '0 0 80px rgba(0,212,255,0.08)',
+            }}
+          >
+            {/* Greeting + Agents */}
+            <div className="flex items-start justify-between mb-3">
               <GreetingBar />
-              <div className="pr-3 pt-3.5 shrink-0">
+              <div className="shrink-0">
                 <AgentBar />
               </div>
             </div>
@@ -489,15 +747,34 @@ function HomePage() {
             <textarea
               ref={textareaRef}
               placeholder={t('upload.requirementPlaceholder')}
-              className="w-full resize-none border-0 bg-transparent px-4 pt-1 pb-2 text-[13px] leading-relaxed placeholder:text-muted-foreground/40 focus:outline-none min-h-[140px] max-h-[300px]"
+              className="w-full resize-none bg-transparent px-1 pt-1 pb-2 text-[15px] leading-relaxed focus:outline-none min-h-[120px] max-h-[300px]"
+              style={{ color: 'var(--ev-text-primary)', fontFamily: 'var(--font-sans)' }}
               value={form.requirement}
               onChange={(e) => updateForm('requirement', e.target.value)}
               onKeyDown={handleKeyDown}
               rows={4}
             />
 
+            {/* Example chips */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {EXAMPLE_CHIPS.map((chip) => (
+                <button
+                  key={chip}
+                  onClick={() => updateForm('requirement', chip.replace('✦ ', ''))}
+                  className="px-3 py-1.5 rounded-full text-xs transition-all hover:text-[var(--ev-text-primary)] cursor-pointer"
+                  style={{
+                    background: 'rgba(0,212,255,0.06)',
+                    border: '1px solid var(--ev-border-subtle)',
+                    color: 'var(--ev-text-secondary)',
+                  }}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+
             {/* Toolbar row */}
-            <div className="px-3 pb-3 flex items-end gap-2">
+            <div className="flex items-end gap-2">
               <div className="flex-1 min-w-0">
                 <GenerationToolbar
                   language={form.language}
@@ -513,8 +790,6 @@ function HomePage() {
                   onPdfError={setError}
                 />
               </div>
-
-              {/* Voice input */}
               <SpeechButton
                 size="md"
                 onTranscription={(text) => {
@@ -525,127 +800,115 @@ function HomePage() {
                   });
                 }}
               />
-
-              {/* Send button */}
               <button
                 onClick={handleGenerate}
                 disabled={!canGenerate}
                 className={cn(
-                  'shrink-0 h-8 rounded-lg flex items-center justify-center gap-1.5 transition-all px-3',
-                  canGenerate
-                    ? 'bg-primary text-primary-foreground hover:opacity-90 shadow-sm cursor-pointer'
-                    : 'bg-muted text-muted-foreground/40 cursor-not-allowed',
+                  'shrink-0 h-10 rounded-full flex items-center justify-center gap-2 transition-all px-6 text-sm font-semibold',
+                  canGenerate ? 'cursor-pointer hover:scale-[1.02]' : 'opacity-30 cursor-not-allowed',
                 )}
+                style={{
+                  background: canGenerate ? 'linear-gradient(135deg, #00D4FF, #7B2FFF)' : 'var(--ev-bg-elevated)',
+                  color: canGenerate ? 'var(--ev-bg-base)' : 'var(--ev-text-muted)',
+                }}
               >
-                <span className="text-xs font-medium">{t('toolbar.enterClassroom')}</span>
-                <ArrowUp className="size-3.5" />
+                Enter EduVerse
+                <ArrowRight className="size-3.5" />
               </button>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
 
-        {/* ── Error ── */}
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mt-3 w-full p-3 bg-destructive/10 border border-destructive/20 rounded-lg"
-            >
-              <p className="text-sm text-destructive">{error}</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-
-      {/* ═══ Recent classrooms — collapsible ═══ */}
-      {classrooms.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="relative z-10 mt-10 w-full max-w-6xl flex flex-col items-center"
-        >
-          {/* Trigger — divider-line with centered text */}
-          <button
-            onClick={() => {
-              const next = !recentOpen;
-              setRecentOpen(next);
-              try {
-                localStorage.setItem(RECENT_OPEN_STORAGE_KEY, String(next));
-              } catch {
-                /* ignore */
-              }
-            }}
-            className="group w-full flex items-center gap-4 py-2 cursor-pointer"
-          >
-            <div className="flex-1 h-px bg-border/40 group-hover:bg-border/70 transition-colors" />
-            <span className="shrink-0 flex items-center gap-2 text-[13px] text-muted-foreground/60 group-hover:text-foreground/70 transition-colors select-none">
-              <Clock className="size-3.5" />
-              {t('classroom.recentClassrooms')}
-              <span className="text-[11px] tabular-nums opacity-60">{classrooms.length}</span>
-              <motion.div
-                animate={{ rotate: recentOpen ? 180 : 0 }}
-                transition={{ duration: 0.3, ease: 'easeInOut' }}
-              >
-                <ChevronDown className="size-3.5" />
-              </motion.div>
-            </span>
-            <div className="flex-1 h-px bg-border/40 group-hover:bg-border/70 transition-colors" />
-          </button>
-
-          {/* Expandable content */}
+          {/* Error */}
           <AnimatePresence>
-            {recentOpen && (
+            {error && (
               <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-                className="w-full overflow-hidden"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-3 w-full p-3 rounded-lg"
+                style={{ background: 'rgba(255,69,101,0.1)', border: '1px solid rgba(255,69,101,0.2)' }}
               >
-                <div className="pt-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-8">
-                  {classrooms.map((classroom, i) => (
-                    <motion.div
-                      key={classroom.id}
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{
-                        delay: i * 0.04,
-                        duration: 0.35,
-                        ease: 'easeOut',
-                      }}
-                    >
-                      <ClassroomCard
-                        classroom={classroom}
-                        slide={thumbnails[classroom.id]}
-                        formatDate={formatDate}
-                        onDelete={handleDelete}
-                        onRename={handleRename}
-                        confirmingDelete={pendingDeleteId === classroom.id}
-                        onConfirmDelete={() => confirmDelete(classroom.id)}
-                        onCancelDelete={() => setPendingDeleteId(null)}
-                        onClick={() => router.push(`/classroom/${classroom.id}`)}
-                      />
-                    </motion.div>
-                  ))}
-                </div>
+                <p className="text-sm" style={{ color: 'var(--ev-error)' }}>{error}</p>
               </motion.div>
             )}
           </AnimatePresence>
-        </motion.div>
+        </div>
+      </section>
+
+      {/* ═══ Recent classrooms ═══ */}
+      {classrooms.length > 0 && (
+        <section className="relative z-10 py-16 px-4" style={{ background: 'var(--ev-bg-secondary)' }}>
+          <div className="max-w-6xl mx-auto">
+            <button
+              onClick={() => {
+                const next = !recentOpen;
+                setRecentOpen(next);
+                try { localStorage.setItem(RECENT_OPEN_STORAGE_KEY, String(next)); } catch { /* */ }
+              }}
+              className="group w-full flex items-center gap-4 py-2 cursor-pointer"
+            >
+              <div className="flex-1 h-px" style={{ background: 'var(--ev-border-subtle)' }} />
+              <span className="shrink-0 flex items-center gap-2 text-[13px] select-none" style={{ color: 'var(--ev-text-secondary)' }}>
+                <Clock className="size-3.5" />
+                {t('classroom.recentClassrooms')}
+                <span className="text-[11px] tabular-nums opacity-60">{classrooms.length}</span>
+                <motion.div
+                  animate={{ rotate: recentOpen ? 180 : 0 }}
+                  transition={{ duration: 0.3, ease: 'easeInOut' }}
+                >
+                  <ChevronDown className="size-3.5" />
+                </motion.div>
+              </span>
+              <div className="flex-1 h-px" style={{ background: 'var(--ev-border-subtle)' }} />
+            </button>
+
+            <AnimatePresence>
+              {recentOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+                  className="w-full overflow-hidden"
+                >
+                  <div className="pt-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-8">
+                    {classrooms.map((classroom, i) => (
+                      <motion.div
+                        key={classroom.id}
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.04, duration: 0.35, ease: 'easeOut' }}
+                      >
+                        <ClassroomCard
+                          classroom={classroom}
+                          slide={thumbnails[classroom.id]}
+                          formatDate={formatDate}
+                          onDelete={handleDelete}
+                          onRename={handleRename}
+                          confirmingDelete={pendingDeleteId === classroom.id}
+                          onConfirmDelete={() => confirmDelete(classroom.id)}
+                          onCancelDelete={() => setPendingDeleteId(null)}
+                          onClick={() => router.push(`/classroom/${classroom.id}`)}
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </section>
       )}
 
-      {/* Footer — flows with content, at the very end */}
-      <div className="mt-auto pt-12 pb-4 text-center text-xs text-muted-foreground/40">
-        OpenMAIC Open Source Project
-      </div>
+      {/* Footer */}
+      <footer className="relative z-10 py-8 text-center text-xs" style={{ color: 'var(--ev-text-muted)' }}>
+        EduVerse — Your Personal AI Universe of Learning
+      </footer>
     </div>
   );
 }
 
-// ─── Greeting Bar — avatar + "Hi, Name", click to edit in-place ────
+// ─── Greeting Bar ────
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 
 function isCustomAvatar(src: string) {
@@ -671,7 +934,6 @@ function GreetingBar() {
 
   const displayName = nickname || t('profile.defaultNickname');
 
-  // Click-outside to collapse
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
@@ -699,25 +961,17 @@ function GreetingBar() {
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > MAX_AVATAR_SIZE) {
-      toast.error(t('profile.fileTooLarge'));
-      return;
-    }
-    if (!file.type.startsWith('image/')) {
-      toast.error(t('profile.invalidFileType'));
-      return;
-    }
+    if (file.size > MAX_AVATAR_SIZE) { toast.error(t('profile.fileTooLarge')); return; }
+    if (!file.type.startsWith('image/')) { toast.error(t('profile.invalidFileType')); return; }
     const reader = new FileReader();
     reader.onload = () => {
       const img = new window.Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        canvas.width = 128;
-        canvas.height = 128;
+        canvas.width = 128; canvas.height = 128;
         const ctx = canvas.getContext('2d')!;
         const scale = Math.max(128 / img.width, 128 / img.height);
-        const w = img.width * scale;
-        const h = img.height * scale;
+        const w = img.width * scale; const h = img.height * scale;
         ctx.drawImage(img, (128 - w) / 2, (128 - h) / 2, w, h);
         setAvatar(canvas.toDataURL('image/jpeg', 0.85));
       };
@@ -728,48 +982,27 @@ function GreetingBar() {
   };
 
   return (
-    <div ref={containerRef} className="relative pl-4 pr-2 pt-3.5 pb-1 w-auto">
-      <input
-        ref={avatarInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleAvatarUpload}
-      />
+    <div ref={containerRef} className="relative py-1 w-auto">
+      <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
 
-      {/* ── Collapsed pill (always in flow) ── */}
       {!open && (
         <div
-          className="flex items-center gap-2.5 cursor-pointer transition-all duration-200 group rounded-full px-2.5 py-1.5 border border-border/50 text-muted-foreground/70 hover:text-foreground hover:bg-muted/60 active:scale-[0.97]"
+          className="flex items-center gap-2.5 cursor-pointer transition-all duration-200 group rounded-full px-2.5 py-1.5"
+          style={{ border: '1px solid var(--ev-border-subtle)', color: 'var(--ev-text-secondary)' }}
           onClick={() => setOpen(true)}
         >
           <div className="shrink-0 relative">
-            <div className="size-8 rounded-full overflow-hidden ring-[1.5px] ring-border/30 group-hover:ring-violet-400/60 dark:group-hover:ring-violet-400/40 transition-all duration-300">
+            <div className="size-8 rounded-full overflow-hidden" style={{ border: '1.5px solid var(--ev-border-medium)' }}>
               <img src={avatar} alt="" className="size-full object-cover" />
             </div>
-            <div className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-white dark:bg-slate-800 border border-border/40 flex items-center justify-center opacity-60 group-hover:opacity-100 transition-opacity">
-              <Pencil className="size-[7px] text-muted-foreground/70" />
-            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="leading-none select-none flex items-center gap-1">
-                  <span className="text-[13px] font-semibold text-foreground/85 group-hover:text-foreground transition-colors">
-                    {t('home.greetingWithName', { name: displayName })}
-                  </span>
-                  <ChevronDown className="size-3 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors shrink-0" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={4}>
-                {t('profile.editTooltip')}
-              </TooltipContent>
-            </Tooltip>
-          </div>
+          <span className="text-[13px] font-semibold" style={{ color: 'var(--ev-text-primary)' }}>
+            {t('home.greetingWithName', { name: displayName })}
+          </span>
+          <ChevronDown className="size-3 opacity-40" />
         </div>
       )}
 
-      {/* ── Expanded panel (absolute, floating) ── */}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -777,44 +1010,15 @@ function GreetingBar() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.97 }}
             transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-            className="absolute left-4 top-3.5 z-50 w-64"
+            className="absolute left-0 top-0 z-50 w-64"
           >
-            <div className="rounded-2xl bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06] shadow-[0_1px_8px_-2px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_8px_-2px_rgba(0,0,0,0.3)] px-2.5 py-2">
-              {/* ── Row: avatar + name ── */}
-              <div
-                className="flex items-center gap-2.5 cursor-pointer transition-all duration-200"
-                onClick={() => {
-                  setOpen(false);
-                  setEditingName(false);
-                  setAvatarPickerOpen(false);
-                }}
-              >
-                {/* Avatar */}
-                <div
-                  className="shrink-0 relative cursor-pointer"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setAvatarPickerOpen(!avatarPickerOpen);
-                  }}
-                >
-                  <div className="size-8 rounded-full overflow-hidden ring-[1.5px] ring-violet-300/70 dark:ring-violet-500/40 transition-all duration-300">
+            <div className="rounded-2xl backdrop-blur-sm p-2.5" style={{ background: 'var(--ev-bg-elevated)', border: '1px solid var(--ev-border-medium)' }}>
+              <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => { setOpen(false); setEditingName(false); setAvatarPickerOpen(false); }}>
+                <div className="shrink-0 relative cursor-pointer" onClick={(e) => { e.stopPropagation(); setAvatarPickerOpen(!avatarPickerOpen); }}>
+                  <div className="size-8 rounded-full overflow-hidden" style={{ border: '1.5px solid var(--ev-primary)' }}>
                     <img src={avatar} alt="" className="size-full object-cover" />
                   </div>
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-white dark:bg-slate-800 border border-border/60 flex items-center justify-center"
-                  >
-                    <ChevronDown
-                      className={cn(
-                        'size-2 text-muted-foreground/70 transition-transform duration-200',
-                        avatarPickerOpen && 'rotate-180',
-                      )}
-                    />
-                  </motion.div>
                 </div>
-
-                {/* Text */}
                 <div className="flex-1 min-w-0">
                   {editingName ? (
                     <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
@@ -822,88 +1026,46 @@ function GreetingBar() {
                         ref={nameInputRef}
                         value={nameDraft}
                         onChange={(e) => setNameDraft(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') commitName();
-                          if (e.key === 'Escape') {
-                            setEditingName(false);
-                          }
-                        }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') commitName(); if (e.key === 'Escape') setEditingName(false); }}
                         onBlur={commitName}
                         maxLength={20}
                         placeholder={t('profile.defaultNickname')}
-                        className="flex-1 min-w-0 h-6 bg-transparent border-b border-border/80 text-[13px] font-semibold text-foreground outline-none placeholder:text-muted-foreground/40"
+                        className="flex-1 min-w-0 h-6 bg-transparent text-[13px] font-semibold outline-none"
+                        style={{ borderBottom: '1px solid var(--ev-border-medium)', color: 'var(--ev-text-primary)' }}
                       />
-                      <button
-                        onClick={commitName}
-                        className="shrink-0 size-5 rounded flex items-center justify-center text-violet-500 hover:bg-violet-100 dark:hover:bg-violet-900/30"
-                      >
+                      <button onClick={commitName} className="shrink-0 size-5 rounded flex items-center justify-center" style={{ color: 'var(--ev-primary)' }}>
                         <Check className="size-3" />
                       </button>
                     </div>
                   ) : (
-                    <span
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        startEditName();
-                      }}
-                      className="group/name inline-flex items-center gap-1 cursor-pointer"
-                    >
-                      <span className="text-[13px] font-semibold text-foreground/85 group-hover/name:text-foreground transition-colors">
-                        {displayName}
-                      </span>
-                      <Pencil className="size-2.5 text-muted-foreground/30 opacity-0 group-hover/name:opacity-100 transition-opacity" />
+                    <span onClick={(e) => { e.stopPropagation(); startEditName(); }} className="group/name inline-flex items-center gap-1 cursor-pointer">
+                      <span className="text-[13px] font-semibold" style={{ color: 'var(--ev-text-primary)' }}>{displayName}</span>
+                      <Pencil className="size-2.5 opacity-30 group-hover/name:opacity-100 transition-opacity" style={{ color: 'var(--ev-text-muted)' }} />
                     </span>
                   )}
                 </div>
-
-                {/* Collapse arrow */}
-                <motion.div
-                  initial={{ opacity: 0, y: -2 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="shrink-0 size-6 rounded-full flex items-center justify-center hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
-                >
-                  <ChevronUp className="size-3.5 text-muted-foreground/50" />
-                </motion.div>
+                <ChevronUp className="size-3.5" style={{ color: 'var(--ev-text-muted)' }} />
               </div>
 
-              {/* ── Expandable content ── */}
               <div className="pt-2" onClick={(e) => e.stopPropagation()}>
-                {/* Avatar picker */}
                 <AnimatePresence>
                   {avatarPickerOpen && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.15, ease: 'easeInOut' }}
-                      className="overflow-hidden"
-                    >
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                       <div className="p-1 pb-2.5 flex items-center gap-1.5 flex-wrap">
                         {AVATAR_OPTIONS.map((url) => (
-                          <button
-                            key={url}
-                            onClick={() => setAvatar(url)}
-                            className={cn(
-                              'size-7 rounded-full overflow-hidden bg-gray-50 dark:bg-gray-800 cursor-pointer transition-all duration-150',
-                              'hover:scale-110 active:scale-95',
-                              avatar === url
-                                ? 'ring-2 ring-violet-400 dark:ring-violet-500 ring-offset-0'
-                                : 'hover:ring-1 hover:ring-muted-foreground/30',
+                          <button key={url} onClick={() => setAvatar(url)}
+                            className={cn('size-7 rounded-full overflow-hidden cursor-pointer transition-all duration-150 hover:scale-110 active:scale-95',
+                              avatar === url ? 'ring-2 ring-offset-0' : 'hover:ring-1 hover:ring-[var(--ev-border-medium)]'
                             )}
+                            style={avatar === url ? { ringColor: 'var(--ev-primary)' } : {}}
                           >
                             <img src={url} alt="" className="size-full" />
                           </button>
                         ))}
                         <label
-                          className={cn(
-                            'size-7 rounded-full flex items-center justify-center cursor-pointer transition-all duration-150 border border-dashed',
-                            'hover:scale-110 active:scale-95',
-                            isCustomAvatar(avatar)
-                              ? 'ring-2 ring-violet-400 dark:ring-violet-500 ring-offset-0 border-violet-300 dark:border-violet-600 bg-violet-50 dark:bg-violet-900/30'
-                              : 'border-muted-foreground/30 text-muted-foreground/50 hover:border-muted-foreground/50',
-                          )}
+                          className="size-7 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110"
+                          style={{ border: '1px dashed var(--ev-border-medium)', color: 'var(--ev-text-muted)' }}
                           onClick={() => avatarInputRef.current?.click()}
-                          title={t('profile.uploadAvatar')}
                         >
                           <ImagePlus className="size-3" />
                         </label>
@@ -911,15 +1073,14 @@ function GreetingBar() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-
-                {/* Bio */}
                 <UITextarea
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   placeholder={t('profile.bioPlaceholder')}
                   maxLength={200}
                   rows={2}
-                  className="resize-none border-border/40 bg-transparent min-h-[72px] !text-[13px] !leading-relaxed placeholder:!text-[11px] placeholder:!leading-relaxed focus-visible:ring-1 focus-visible:ring-border/60"
+                  className="resize-none bg-transparent min-h-[72px] !text-[13px] !leading-relaxed focus-visible:ring-1"
+                  style={{ borderColor: 'var(--ev-border-subtle)', color: 'var(--ev-text-primary)' }}
                 />
               </div>
             </div>
@@ -930,17 +1091,10 @@ function GreetingBar() {
   );
 }
 
-// ─── Classroom Card — clean, minimal style ──────────────────────
+// ─── Classroom Card ──────────────────────
 function ClassroomCard({
-  classroom,
-  slide,
-  formatDate,
-  onDelete,
-  onRename,
-  confirmingDelete,
-  onConfirmDelete,
-  onCancelDelete,
-  onClick,
+  classroom, slide, formatDate, onDelete, onRename,
+  confirmingDelete, onConfirmDelete, onCancelDelete, onClick,
 }: {
   classroom: StageListItem;
   slide?: Slide;
@@ -962,9 +1116,7 @@ function ClassroomCard({
   useEffect(() => {
     const el = thumbRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(([entry]) => {
-      setThumbWidth(Math.round(entry.contentRect.width));
-    });
+    const ro = new ResizeObserver(([entry]) => setThumbWidth(Math.round(entry.contentRect.width)));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -982,58 +1134,40 @@ function ClassroomCard({
   const commitRename = () => {
     if (!editing) return;
     const trimmed = nameDraft.trim();
-    if (trimmed && trimmed !== classroom.name) {
-      onRename(classroom.id, trimmed);
-    }
+    if (trimmed && trimmed !== classroom.name) onRename(classroom.id, trimmed);
     setEditing(false);
   };
 
   return (
     <div className="group cursor-pointer" onClick={confirmingDelete ? undefined : onClick}>
-      {/* Thumbnail — large radius, no border, subtle bg */}
       <div
         ref={thumbRef}
-        className="relative w-full aspect-[16/9] rounded-2xl bg-slate-100 dark:bg-slate-800/80 overflow-hidden transition-transform duration-200 group-hover:scale-[1.02]"
+        className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden transition-transform duration-200 group-hover:scale-[1.02]"
+        style={{ background: 'var(--ev-bg-card)', border: '1px solid var(--ev-border-subtle)' }}
       >
         {slide && thumbWidth > 0 ? (
-          <ThumbnailSlide
-            slide={slide}
-            size={thumbWidth}
-            viewportSize={slide.viewportSize ?? 1000}
-            viewportRatio={slide.viewportRatio ?? 0.5625}
-          />
+          <ThumbnailSlide slide={slide} size={thumbWidth} viewportSize={slide.viewportSize ?? 1000} viewportRatio={slide.viewportRatio ?? 0.5625} />
         ) : !slide ? (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="size-12 rounded-2xl bg-gradient-to-br from-violet-100 to-blue-100 dark:from-violet-900/30 dark:to-blue-900/30 flex items-center justify-center">
+            <div className="size-12 rounded-2xl flex items-center justify-center" style={{ background: 'var(--ev-bg-elevated)' }}>
               <span className="text-xl opacity-50">📄</span>
             </div>
           </div>
         ) : null}
 
-        {/* Delete — top-right, only on hover */}
         <AnimatePresence>
           {!confirmingDelete && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            >
-              <Button
-                size="icon"
-                variant="ghost"
-                className="absolute top-2 right-2 size-7 opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 hover:bg-destructive/80 text-white hover:text-white backdrop-blur-sm rounded-full"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(classroom.id, e);
-                }}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <Button size="icon" variant="ghost"
+                className="absolute top-2 right-2 size-7 opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
+                style={{ background: 'rgba(0,0,0,0.4)', color: 'white' }}
+                onClick={(e) => { e.stopPropagation(); onDelete(classroom.id, e); }}
               >
                 <Trash2 className="size-3.5" />
               </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="absolute top-2 right-11 size-7 opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 hover:bg-black/50 text-white hover:text-white backdrop-blur-sm rounded-full"
+              <Button size="icon" variant="ghost"
+                className="absolute top-2 right-11 size-7 opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
+                style={{ background: 'rgba(0,0,0,0.4)', color: 'white' }}
                 onClick={startRename}
               >
                 <Pencil className="size-3.5" />
@@ -1042,31 +1176,21 @@ function ClassroomCard({
           )}
         </AnimatePresence>
 
-        {/* Inline delete confirmation overlay */}
         <AnimatePresence>
           {confirmingDelete && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/50 backdrop-blur-[6px]"
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 backdrop-blur-[6px]"
+              style={{ background: 'rgba(0,0,0,0.6)' }}
               onClick={(e) => e.stopPropagation()}
             >
-              <span className="text-[13px] font-medium text-white/90">
+              <span className="text-[13px] font-medium" style={{ color: 'rgba(255,255,255,0.9)' }}>
                 {t('classroom.deleteConfirmTitle')}?
               </span>
               <div className="flex gap-2">
-                <button
-                  className="px-3.5 py-1 rounded-lg text-[12px] font-medium bg-white/15 text-white/80 hover:bg-white/25 backdrop-blur-sm transition-colors"
-                  onClick={onCancelDelete}
-                >
+                <button className="px-3.5 py-1 rounded-lg text-[12px] font-medium" style={{ background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)' }} onClick={onCancelDelete}>
                   {t('common.cancel')}
                 </button>
-                <button
-                  className="px-3.5 py-1 rounded-lg text-[12px] font-medium bg-red-500/90 text-white hover:bg-red-500 transition-colors"
-                  onClick={onConfirmDelete}
-                >
+                <button className="px-3.5 py-1 rounded-lg text-[12px] font-medium" style={{ background: 'rgba(255,69,101,0.9)', color: 'white' }} onClick={onConfirmDelete}>
                   {t('classroom.delete')}
                 </button>
               </div>
@@ -1075,9 +1199,10 @@ function ClassroomCard({
         </AnimatePresence>
       </div>
 
-      {/* Info — outside the thumbnail */}
       <div className="mt-2.5 px-1 flex items-center gap-2">
-        <span className="shrink-0 inline-flex items-center rounded-full bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 text-[11px] font-medium text-violet-600 dark:text-violet-400">
+        <span className="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
+          style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.15)', color: 'var(--ev-primary)' }}
+        >
           {classroom.sceneCount} {t('classroom.slides')} · {formatDate(classroom.updatedAt)}
         </span>
         {editing ? (
@@ -1086,41 +1211,24 @@ function ClassroomCard({
               ref={nameInputRef}
               value={nameDraft}
               onChange={(e) => setNameDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') commitRename();
-                if (e.key === 'Escape') setEditing(false);
-              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setEditing(false); }}
               onBlur={commitRename}
               maxLength={100}
-              placeholder={t('classroom.renamePlaceholder')}
-              className="w-full bg-transparent border-b border-violet-400/60 text-[15px] font-medium text-foreground/90 outline-none placeholder:text-muted-foreground/40"
+              className="w-full bg-transparent text-[15px] font-medium outline-none"
+              style={{ borderBottom: '1px solid var(--ev-primary)', color: 'var(--ev-text-primary)' }}
             />
           </div>
         ) : (
           <Tooltip>
             <TooltipTrigger asChild>
-              <p
-                className="font-medium text-[15px] truncate text-foreground/90 min-w-0 cursor-text"
-                onDoubleClick={startRename}
-              >
+              <p className="font-medium text-[15px] truncate min-w-0 cursor-text" style={{ color: 'var(--ev-text-primary)' }} onDoubleClick={startRename}>
                 {classroom.name}
               </p>
             </TooltipTrigger>
-            <TooltipContent
-              side="bottom"
-              sideOffset={4}
-              className="!max-w-[min(90vw,32rem)] break-words whitespace-normal"
-            >
+            <TooltipContent side="bottom" sideOffset={4} className="!max-w-[min(90vw,32rem)] break-words whitespace-normal">
               <div className="flex items-center gap-1.5">
                 <span className="break-all">{classroom.name}</span>
-                <button
-                  className="shrink-0 p-0.5 rounded hover:bg-foreground/10 transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigator.clipboard.writeText(classroom.name);
-                    toast.success(t('classroom.nameCopied'));
-                  }}
-                >
+                <button className="shrink-0 p-0.5 rounded" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(classroom.name); toast.success(t('classroom.nameCopied')); }}>
                   <Copy className="size-3 opacity-60" />
                 </button>
               </div>
