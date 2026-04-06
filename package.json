@@ -1,8 +1,9 @@
 {
-  "name": "openmaic",
+  "name": "eduverse",
   "version": "0.1.0",
   "private": true,
   "license": "AGPL-3.0",
+  "description": "AI-powered interactive learning universe",
   "engines": {
     "node": ">=20.9.0"
   },
