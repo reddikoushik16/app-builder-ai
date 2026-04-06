@@ -1,7 +1,4 @@
 import type { Metadata } from 'next';
-import localFont from 'next/font/local';
-import { GeistSans } from 'geist/font/sans';
-import { GeistMono } from 'geist/font/mono';
 import './globals.css';
 import 'animate.css';
 import 'katex/dist/katex.min.css';
@@ -10,16 +7,10 @@ import { I18nProvider } from '@/lib/hooks/use-i18n';
 import { Toaster } from '@/components/ui/sonner';
 import { ServerProvidersInit } from '@/components/server-providers-init';
 
-const inter = localFont({
-  src: '../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2',
-  variable: '--font-sans',
-  weight: '100 900',
-});
-
 export const metadata: Metadata = {
-  title: 'OpenMAIC',
+  title: 'EduVerse — AI Learning Universe',
   description:
-    'The open-source AI interactive classroom. Upload a PDF to instantly generate an immersive, multi-agent learning experience.',
+    'Step into EduVerse, your personal AI powered learning universe. Learn any topic with AI teachers in an immersive interactive classroom.',
 };
 
 export default function RootLayout({
@@ -28,9 +19,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+      </head>
       <body
-        className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
+        className="antialiased"
+        style={{ fontFamily: "var(--font-sans)" }}
         suppressHydrationWarning
       >
         <ThemeProvider>

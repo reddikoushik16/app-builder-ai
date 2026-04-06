@@ -926,7 +926,7 @@ export function Stage({
     <div
       ref={stageRef}
       className={cn(
-        'flex-1 flex overflow-hidden bg-gray-50 dark:bg-gray-900',
+        'flex-1 flex overflow-hidden',
         isPresenting && !controlsVisible && 'cursor-none',
       )}
     >

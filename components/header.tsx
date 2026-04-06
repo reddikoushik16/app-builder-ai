@@ -72,21 +72,23 @@ export function Header({ currentSceneTitle }: HeaderProps) {
 
   return (
     <>
-      <header className="h-20 px-8 flex items-center justify-between z-10 bg-transparent gap-4">
+      <header className="h-14 px-6 flex items-center justify-between z-10 gap-4" style={{ background: 'var(--ev-bg-base)', borderBottom: '1px solid var(--ev-border-subtle)' }}>
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <button
             onClick={() => router.push('/')}
-            className="shrink-0 p-2 rounded-lg text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+            className="shrink-0 p-2 rounded-lg transition-colors"
+            style={{ color: 'var(--ev-text-secondary)' }}
             title={t('generation.backToHome')}
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex flex-col min-w-0">
-            <span className="text-[10px] uppercase tracking-widest font-bold text-gray-400 dark:text-gray-500 mb-0.5">
+            <span className="text-[9px] uppercase tracking-[2px] font-semibold mb-0.5" style={{ color: 'var(--ev-text-muted)' }}>
               {t('stage.currentScene')}
             </span>
             <h1
-              className="text-xl font-bold text-gray-800 dark:text-gray-200 tracking-tight truncate"
+              className="text-base font-bold tracking-tight truncate"
+              style={{ color: 'var(--ev-text-primary)', fontFamily: 'var(--font-heading)' }}
               suppressHydrationWarning
             >
               {currentSceneTitle || t('common.loading')}
